@@ -1,0 +1,215 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
+
+const defaultPlayerNames = ["Player 1", "Player 2", "Player 3"];
+const cardTypes = ["Vocab", "Culture", "Grammar", "Sentence"];
+const WINNING_STARS = 10;
+
+const cardDeck = {
+  Vocab: [
+    { content: "Sign the word: 'Responsibility'", video: "https://www.youtube.com/embed/YOUTUBE_VIDEO_ID1" },
+    { content: "Sign the word: 'Future'", video: "https://www.youtube.com/embed/YOUTUBE_VIDEO_ID2" }
+  ],
+  Culture: [
+    { content: "What is a TTY and how was it used in Deaf communication?" },
+    { content: "Explain the significance of Deaf President Now (DPN) movement." }
+  ],
+  Grammar: [
+    { content: "Translate to ASL: 'She will go home after class.' (Answer: CLASS FINISH SHE GO HOME)" },
+    { content: "What is the ASL grammar rule for yes/no questions? (Answer: Raise eyebrows, lean forward)" }
+  ],
+  Sentence: [
+    { content: "Sign or write this ASL sentence: 'My mom doesn't like driving at night.' (Answer: NIGHT DRIVE MY MOM NOT-LIKE)" },
+    { content: "Rearrange into ASL: 'We will eat after the movie.' (Answer: MOVIE FINISH WE EAT)" }
+  ]
+};
+
+const drawRandomCard = () => {
+  const type = cardTypes[Math.floor(Math.random() * cardTypes.length)];
+  const options = cardDeck[type];
+  const card = options[Math.floor(Math.random() * options.length)];
+  return { type, ...card };
+};
+
+export default function SignAndShine() {
+  const [playerNames, setPlayerNames] = useState(defaultPlayerNames);
+  const [editingNames, setEditingNames] = useState(true);
+  const [activePlayer, setActivePlayer] = useState(0);
+  const [starTokens, setStarTokens] = useState([0, 0, 0]);
+  const [card, setCard] = useState(null);
+  const [positions, setPositions] = useState([0, 0, 0]);
+  const [timer, setTimer] = useState(60);
+  const [gameOver, setGameOver] = useState(false);
+  const [reviewLog, setReviewLog] = useState([]);
+  const boardSize = 20;
+
+  useEffect(() => {
+    let countdown;
+    if (card && timer > 0) {
+      countdown = setTimeout(() => setTimer(timer - 1), 1000);
+    }
+    return () => clearTimeout(countdown);
+  }, [timer, card]);
+
+  useEffect(() => {
+    const winnerIndex = starTokens.findIndex(stars => stars >= WINNING_STARS);
+    if (winnerIndex !== -1) {
+      setGameOver(true);
+    }
+  }, [starTokens]);
+
+  const handleDrawCard = () => {
+    const newCard = drawRandomCard();
+    setCard(newCard);
+    setTimer(60);
+    setReviewLog(prev => [...prev, { player: playerNames[activePlayer], ...newCard }]);
+  };
+
+  const handleEarnStar = () => {
+    const updatedTokens = [...starTokens];
+    updatedTokens[activePlayer] += 1;
+    setStarTokens(updatedTokens);
+  };
+
+  const handleNextPlayer = () => {
+    setActivePlayer((activePlayer + 1) % playerNames.length);
+    setCard(null);
+    setTimer(60);
+  };
+
+  const handleMove = () => {
+    const updatedPositions = [...positions];
+    updatedPositions[activePlayer] = Math.min(updatedPositions[activePlayer] + 1, boardSize - 1);
+    setPositions(updatedPositions);
+  };
+
+  const handleNameChange = (index, newName) => {
+    const updatedNames = [...playerNames];
+    updatedNames[index] = newName;
+    setPlayerNames(updatedNames);
+  };
+
+  const handleStartGame = () => {
+    setEditingNames(false);
+  };
+
+  return (
+    <div className="p-6 space-y-6 bg-gradient-to-br from-indigo-100 to-purple-100 min-h-screen">
+      <h1 className="text-4xl font-extrabold text-center text-purple-800">🌟 Sign & Shine! 🌟</h1>
+
+      {editingNames ? (
+        <div className="max-w-xl mx-auto bg-white rounded-xl shadow-md p-6">
+          <h2 className="text-xl font-semibold text-center text-purple-700 mb-4">Enter Player Names</h2>
+          {playerNames.map((name, index) => (
+            <input
+              key={index}
+              className="w-full mb-2 p-2 border rounded-md"
+              value={name}
+              onChange={(e) => handleNameChange(index, e.target.value)}
+              placeholder={`Player ${index + 1}`}
+            />
+          ))}
+          <Button className="mt-4 w-full" onClick={handleStartGame}>
+            ✅ Start Game
+          </Button>
+        </div>
+      ) : gameOver ? (
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center text-2xl text-green-600 font-semibold mb-4">
+            🎉 {playerNames[starTokens.findIndex(stars => stars >= WINNING_STARS)]} wins the game with {WINNING_STARS}+ stars! 🎉
+          </div>
+          <h3 className="text-xl font-semibold text-purple-700 mb-2">📚 Review Mode</h3>
+          <div className="bg-white rounded-xl shadow-md p-4 space-y-2">
+            {reviewLog.map((entry, idx) => (
+              <div key={idx} className="border-b pb-2">
+                <p className="font-semibold text-purple-800">{entry.player} - {entry.type} Card</p>
+                <p className="text-gray-800">{entry.content}</p>
+                {entry.video && (
+                  <div className="mt-2">
+                    <iframe
+                      width="100%"
+                      height="150"
+                      src={entry.video}
+                      title="Review Video"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-center space-x-6">
+            {playerNames.map((name, index) => (
+              <div
+                key={index}
+                className={`p-4 rounded-xl shadow-lg text-center transition-all duration-300 ${
+                  activePlayer === index ? "bg-yellow-200 scale-105" : "bg-white"
+                }`}
+              >
+                <h2 className="font-bold text-lg text-purple-700">{name}</h2>
+                <p className="text-sm">⭐ Stars: {starTokens[index]}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-center space-x-4 mt-4">
+            <Button onClick={handleDrawCard}>🎴 Draw Card</Button>
+            <Button onClick={handleEarnStar}>🌟 Earn Star</Button>
+            <Button onClick={handleMove}>➡️ Move Token</Button>
+            <Button onClick={handleNextPlayer}>🔄 Next Player</Button>
+          </div>
+
+          <div className="grid grid-cols-20 gap-2 max-w-5xl mx-auto mt-6">
+            {[...Array(boardSize)].map((_, idx) => (
+              <div
+                key={idx}
+                className="w-8 h-8 border rounded-md bg-white shadow-inner flex items-center justify-center relative"
+              >
+                {positions.map((pos, pIdx) =>
+                  pos === idx ? (
+                    <motion.div
+                      key={pIdx}
+                      className={`absolute w-4 h-4 rounded-full shadow ${
+                        pIdx === 0 ? "bg-red-500" : pIdx === 1 ? "bg-blue-500" : "bg-green-500"
+                      }`}
+                    ></motion.div>
+                  ) : null
+                )}
+              </div>
+            ))}
+          </div>
+
+          {card && (
+            <Card className="max-w-xl mx-auto mt-4 border-2 border-purple-300">
+              <CardContent className="p-4">
+                <h3 className="text-xl font-bold text-purple-800">{card.type} Card</h3>
+                <p className="mt-2 text-gray-800">{card.content}</p>
+                <p className="text-sm mt-2 text-red-600">⏱️ Time left: {timer} seconds</p>
+                {card.video && (
+                  <div className="mt-4">
+                    <iframe
+                      width="100%"
+                      height="200"
+                      src={card.video}
+                      title="ASL Video"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
